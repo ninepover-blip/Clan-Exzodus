@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "api/index.py": { "maxDuration": 10, "regions": ["cle1"] },
+    "api/worker.py": { "maxDuration": 10, "regions": ["cle1"] }
+  },
+  "crons": [
+    {
+      "path": "/api/worker",
+      "schedule": "* * * * *"
+    }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
+}
