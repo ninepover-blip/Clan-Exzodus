@@ -1,15 +1,9 @@
 {
-  "functions": {
-    "api/index.py": { "maxDuration": 10, "regions": ["cle1"] },
-    "api/worker.py": { "maxDuration": 10, "regions": ["cle1"] }
-  },
-  "crons": [
-    {
-      "path": "/api/worker",
-      "schedule": "* * * * *"
-    }
-  ],
+  "version": 2,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
-  ]
+    {"source": "/", "destination": "/index.html"},
+    {"source": "/cabinet", "destination": "/cabinet.html"},
+    {"source": "/admin", "destination": "/admin.html"}
+  ],
+  "headers": [{"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store"}]}]
 }
