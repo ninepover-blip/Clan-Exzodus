@@ -8,6 +8,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
@@ -173,7 +174,18 @@ public class TargetHUD extends Module {
         float height = 47f;
         float panelRadius = 6f;
 
-        drawBackground(x, y, width, height, panelRadius, (int) (255 * animAlpha));
+        List<StatusEffectInstance> effectsList = new ArrayList<>();
+        if (elements.isEnabled("Эффекты")) {
+            try {
+                effectsList = new ArrayList<>(livingEntity.getStatusEffects());
+            } catch (Exception ignored) {
+            }
+        }
+        float effectRowH = 10f;
+        float effectsH = effectsList.isEmpty() ? 0f : effectsList.size() * effectRowH + 4f;
+        float totalHeight = height + effectsH;
+
+        drawBackground(x, y, width, totalHeight, panelRadius, (int) (255 * animAlpha));
 
         float headSize = 28f;
         float headX = x + width - headSize - 4f;
@@ -225,8 +237,8 @@ public class TargetHUD extends Module {
             String name = transliterate(rawName);
 
             Scissor.push();
-            Scissor.setFromComponentCoordinates(textX, y, rightTextLimit - textX, height);
-            DrawUtil.drawText(Fonts.SFMEDIUM.get(), name, textX, textY - 2f, textColor, 8.25f);
+            Scissor.setFromComponentCoordinates(textX, y, rightTextLimit - textX, totalHeight);
+            DrawUtil.drawText(Fonts.SFMEDIUM.get(), name, textX, textY - 2f, textColor, 8.75f);
             Scissor.unset();
             Scissor.pop();
         }
@@ -251,7 +263,7 @@ public class TargetHUD extends Module {
             String absorptionText = absorptionHP > 0f ? " +" + absorpText : "";
             DrawUtil.drawText(Fonts.SFMEDIUM.get(), "HP: " + hpText + absorptionText + "  |  "
                             + String.format(Locale.US, "%.1fm", distance),
-                    textX, textY + 10f, textColor, 7.5f);
+                    textX, textY + 10f, textColor, 8.0f);
         }
 
         if (elements.isEnabled("Топ текст")) {
@@ -305,14 +317,14 @@ public class TargetHUD extends Module {
             }
 
             float topTextWidth = Fonts.SFMEDIUM.get().getWidth(topText, 7.0f);
-            DrawUtil.drawText(Fonts.SFMEDIUM.get(), topText, x + (width / 2f) - (topTextWidth / 2f), y - 41f, topColor, 8.0f);
+            DrawUtil.drawText(Fonts.SFMEDIUM.get(), topText, x + (width / 2f) - (topTextWidth / 2f), y - 41f, topColor, 8.5f);
         }
 
         float barX = textX - 1f;
         RecentUse recentUse = recentUses.get(livingEntity.getId());
         if (recentUse != null && System.currentTimeMillis() - recentUse.time() <= 10_000L) {
             DrawUtil.drawText(Fonts.SFMEDIUM.get(), "10с: " + recentUse.itemName(),
-                    textX, textY + 20f, textColor, 6.5f);
+                    textX, textY + 20f, textColor, 7.0f);
         } else if (recentUse != null) {
             recentUses.remove(livingEntity.getId());
         }
@@ -442,12 +454,12 @@ public class TargetHUD extends Module {
             }
         }
 
-        if (elements.isEnabled("Эффекты")) {
-            renderEffects(context, livingEntity, x, y + height + 3f, animAlpha);
+        if (elements.isEnabled("Эффекты") && !effectsList.isEmpty()) {
+            renderEffects(context, effectsList, x, y + height + 2f, animAlpha, totalHeight);
         }
 
         targetHUDDrag.setWidth(width);
-        targetHUDDrag.setHeight(height);
+        targetHUDDrag.setHeight(totalHeight);
     }
 
     private float barWidth() {
@@ -462,26 +474,17 @@ public class TargetHUD extends Module {
         return 5f;
     }
 
-    private void renderEffects(DrawContext context, LivingEntity livingEntity, float x, float y, float animAlpha) {
-        List<StatusEffectInstance> effects;
-        try {
-            effects = new ArrayList<>(livingEntity.getStatusEffects());
-        } catch (Exception ignored) {
-            return;
-        }
-        if (effects.isEmpty()) return;
-
-        float rowH = 8f;
+    private void renderEffects(DrawContext context, List<StatusEffectInstance> effects, float x, float y, float animAlpha, float panelHeight) {
+        float rowH = 10f;
         float panelW = 132f;
-        float totalH = effects.size() * rowH + 4f;
+        float clipH = panelHeight - (y - targetHUDDrag.getY());
 
-        DrawUtil.drawRoundBlur(x, y, panelW, totalH, 5f, ColorProvider.rgba(0, 0, 0, 120), 10f);
-        DrawUtil.drawRound(x, y, panelW, totalH, 5f, ColorProvider.rgba(14, 15, 20, (int) (225 * animAlpha)));
+        DrawUtil.drawRound(x + 2f, y, panelW - 4f, 1f, 0.5f, ColorProvider.rgba(255, 255, 255, (int) (35 * animAlpha)));
 
         float ty = y + 3f;
         for (StatusEffectInstance inst : effects) {
             try {
-                String name = inst.getEffectType().value().getName().getString();
+                String name = transliterate(inst.getEffectType().value().getName().getString());
                 String amp = inst.getAmplifier() > 0 ? " " + (inst.getAmplifier() + 1) : "";
 
                 String time;
@@ -491,15 +494,22 @@ public class TargetHUD extends Module {
                     int totalSec = Math.max(0, inst.getDuration() / 20);
                     time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
                 }
-                String text = name + amp + " " + time;
+                String text = name + amp + "  " + time;
 
                 int color = inst.getEffectType().value().getColor();
-                DrawUtil.drawRound(x + 2.5f, ty + 1.5f, 1.5f, 5f, 0.5f, color);
+                DrawUtil.drawRound(x + 2.5f, ty + 2f, 2f, 6f, 0.5f, color);
+
+                try {
+                    String path = inst.getEffectType().getKey().orElseThrow().getValue().getPath();
+                    Identifier icon = Identifier.ofVanilla("textures/mob_effect/" + path + ".png");
+                    context.drawTexture(RenderLayer::getGuiTextured, icon, (int) (x + 8f), (int) (ty - 0.5f), 0, 0, 9, 9, 18, 18);
+                } catch (Exception ignored) {
+                }
 
                 Scissor.push();
-                Scissor.setFromComponentCoordinates(x, y, panelW, totalH);
-                DrawUtil.drawText(Fonts.SFMEDIUM.get(), text, x + 6f, ty,
-                        ColorProvider.rgba(230, 235, 245, (int) (255 * animAlpha)), 6.5f);
+                Scissor.setFromComponentCoordinates(x, y, panelW, clipH);
+                DrawUtil.drawText(Fonts.SFMEDIUM.get(), text, x + 20f, ty,
+                        ColorProvider.rgba(230, 235, 245, (int) (255 * animAlpha)), 7.0f);
                 Scissor.unset();
                 Scissor.pop();
 

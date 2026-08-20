@@ -24,7 +24,9 @@ import tech.onetap.util.killsay.KillSayPresets;
 import tech.onetap.util.killsay.KillSayRepository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -37,8 +39,10 @@ public class KillSay extends Module {
     public final BooleanSetting totemEnabled = new BooleanSetting("Фразы на тотем", true);
     public final BooleanSetting rmbMenu = new BooleanSetting("Меню по ПКМ", true);
 
-    private UUID targetUuid = null;
-    private String targetName = null;
+    private static final long HIT_TTL_MS = 5000L;
+
+    private final Map<UUID, Long> recentHits = new HashMap<>();
+    private final Map<UUID, String> hitNames = new HashMap<>();
 
     @Subscribe
     private void onTick(EventTick ignored) {
@@ -46,6 +50,9 @@ public class KillSay extends Module {
         if (aura != null && aura.isEnabled() && aura.getTarget() != null) {
             track(aura.getTarget());
         }
+
+        long now = System.currentTimeMillis();
+        recentHits.entrySet().removeIf(e -> now - e.getValue() > HIT_TTL_MS);
     }
 
     @Subscribe
@@ -58,9 +65,9 @@ public class KillSay extends Module {
 
     private void track(Entity entity) {
         if (!(entity instanceof PlayerEntity player) || player == mc.player) return;
-        if (player.getUuid().equals(targetUuid)) return;
-        targetUuid = player.getUuid();
-        targetName = player.getName().getString();
+        long now = System.currentTimeMillis();
+        recentHits.put(player.getUuid(), now);
+        hitNames.put(player.getUuid(), player.getName().getString());
     }
 
     @Subscribe
@@ -71,20 +78,22 @@ public class KillSay extends Module {
         Entity entity = packet.getEntity(mc.world);
         if (!(entity instanceof PlayerEntity player) || player == mc.player) return;
 
-        // Тотем: сообщение шлём на любого игрока, а не только на отслеживаемую цель.
-        if (packet.getStatus() == 35 && totemEnabled.getValue()) {
-            sendMessage(pickRandom(getTotemMessages()), player.getName().getString());
+        // Сообщения только тем, кого мы реально бьём (недавно атаковали).
+        UUID uuid = player.getUuid();
+        Long lastHit = recentHits.get(uuid);
+        if (lastHit == null) return;
+        if (System.currentTimeMillis() - lastHit > HIT_TTL_MS) {
+            recentHits.remove(uuid);
             return;
         }
 
-        if (targetUuid == null) return;
-        if (!player.getUuid().equals(targetUuid)) return;
+        String name = hitNames.getOrDefault(uuid, player.getName().getString());
 
-        String name = targetName != null ? targetName : player.getName().getString();
-
-        if (packet.getStatus() == 3 && killEnabled.getValue()) {
+        if (packet.getStatus() == 35 && totemEnabled.getValue()) {
+            sendMessage(pickRandom(getTotemMessages()), name);
+        } else if (packet.getStatus() == 3 && killEnabled.getValue()) {
             sendMessage(pickRandom(getKillMessages()), name);
-            resetTarget();
+            recentHits.remove(uuid);
         }
     }
 
@@ -131,8 +140,8 @@ public class KillSay extends Module {
     }
 
     private void resetTarget() {
-        targetUuid = null;
-        targetName = null;
+        recentHits.clear();
+        hitNames.clear();
     }
 
     @Override

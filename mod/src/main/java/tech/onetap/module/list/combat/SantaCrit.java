@@ -1,6 +1,7 @@
 package tech.onetap.module.list.combat;
 
 import com.google.common.eventbus.Subscribe;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.SlotActionType;
 import org.lwjgl.glfw.GLFW;
@@ -27,7 +28,10 @@ public class SantaCrit extends Module {
     private String boundName = "";
     private boolean armed;
     private int swapSlot = -1;
-    private int restoreTicks;
+    private long lastAttackMs;
+    private long lastRestoreMs;
+    private boolean restorePending;
+    private int restoreRetries;
 
     @Subscribe
     private void onTick(EventTick ignored) {
@@ -41,8 +45,31 @@ public class SantaCrit extends Module {
 
         if (armed) return;
 
-        if (restoreTicks > 0 && --restoreTicks <= 0 && swapSlot != -1) {
-            restore();
+        if (swapSlot == -1) return;
+
+        long now = System.currentTimeMillis();
+
+        if (!restorePending && now - lastAttackMs >= returnDelay.getIntValue() * 50L) {
+            restorePending = true;
+            lastRestoreMs = now;
+            restoreRetries = 0;
+            sendRestore();
+        }
+
+        if (restorePending && now - lastRestoreMs >= 100L) {
+            if (!isBoundOnHead()) {
+                swapSlot = -1;
+                restorePending = false;
+                restoreRetries = 0;
+            } else if (restoreRetries < 25) {
+                sendRestore();
+                lastRestoreMs = now;
+                restoreRetries++;
+            } else {
+                swapSlot = -1;
+                restorePending = false;
+                restoreRetries = 0;
+            }
         }
     }
 
@@ -68,32 +95,45 @@ public class SantaCrit extends Module {
     @Subscribe
     private void onAttack(EventAttack ignored) {
         if (mc.player == null || mc.interactionManager == null) return;
-        if (armed || swapSlot != -1 || restoreTicks > 0) return;
-        if (boundItem.isEmpty()) return;
+        if (armed || boundItem.isEmpty()) return;
+
+        lastAttackMs = System.currentTimeMillis();
+        if (restorePending) {
+            restorePending = false;
+            return;
+        }
+        if (swapSlot != -1) return;
 
         int slot = findBoundSlot();
         if (slot == -1) return;
 
         swapWithHelmet(slot);
         swapSlot = slot;
-        restoreTicks = returnDelay.getIntValue();
+        restoreRetries = 0;
     }
 
     @Override
     public void onDisable() {
-        if (swapSlot != -1) {
-            restore();
+        if (swapSlot != -1 && mc.player != null && mc.interactionManager != null) {
+            sendRestore();
         }
+        swapSlot = -1;
+        restorePending = false;
+        restoreRetries = 0;
         armed = false;
         super.onDisable();
     }
 
-    private void restore() {
-        if (swapSlot != -1 && mc.player != null && mc.interactionManager != null) {
+    private void sendRestore() {
+        if (swapSlot != -1) {
             swapWithHelmet(swapSlot);
         }
-        swapSlot = -1;
-        restoreTicks = 0;
+    }
+
+    private boolean isBoundOnHead() {
+        if (mc.player == null || boundItem.isEmpty()) return false;
+        ItemStack head = mc.player.getEquippedStack(EquipmentSlot.HEAD);
+        return !head.isEmpty() && ItemStack.areItemsAndComponentsEqual(head, boundItem);
     }
 
     private int findBoundSlot() {
