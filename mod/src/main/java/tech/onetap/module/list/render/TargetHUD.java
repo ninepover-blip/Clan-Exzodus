@@ -51,6 +51,7 @@ import tech.onetap.util.render.renderers.DrawUtil;
 import tech.onetap.util.render.stencil.StencilUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -474,6 +475,57 @@ public class TargetHUD extends Module {
         return 5f;
     }
 
+    private static final Map<String, String> RU_EFFECTS = createRuEffects();
+
+    private static Map<String, String> createRuEffects() {
+        Map<String, String> m = new HashMap<>();
+        m.put("speed", "Скорость");
+        m.put("slowness", "Замедление");
+        m.put("haste", "Поспешность");
+        m.put("mining_fatigue", "Усталость");
+        m.put("strength", "Сила");
+        m.put("instant_health", "Мгновенное здоровье");
+        m.put("instant_damage", "Мгновенный урон");
+        m.put("jump_boost", "Прыгучесть");
+        m.put("nausea", "Тошнота");
+        m.put("regeneration", "Регенерация");
+        m.put("resistance", "Сопротивление");
+        m.put("fire_resistance", "Огнестойкость");
+        m.put("water_breathing", "Водное дыхание");
+        m.put("invisibility", "Невидимость");
+        m.put("blindness", "Слепота");
+        m.put("night_vision", "Ночное зрение");
+        m.put("hunger", "Голод");
+        m.put("weakness", "Слабость");
+        m.put("poison", "Отравление");
+        m.put("wither", "Иссушение");
+        m.put("health_boost", "Прибавка здоровья");
+        m.put("absorption", "Поглощение");
+        m.put("saturation", "Насыщение");
+        m.put("glowing", "Свечение");
+        m.put("levitation", "Левитация");
+        m.put("luck", "Удача");
+        m.put("unluck", "Неудача");
+        m.put("slow_falling", "Медленное падение");
+        m.put("conduit_power", "Сила моря");
+        m.put("dolphins_grace", "Милость дельфина");
+        m.put("bad_omen", "Дурное знамение");
+        m.put("hero_of_the_village", "Герой деревни");
+        m.put("darkness", "Тьма");
+        m.put("trial_omen", "Предзнаменование испытания");
+        m.put("raid_omen", "Предзнаменование набега");
+        m.put("wind_charged", "Заряжен ветром");
+        m.put("weaving", "Плетение");
+        m.put("oozing", "Выделение");
+        m.put("infested", "Заражение");
+        return m;
+    }
+
+    private static String ruEffectName(String path) {
+        String ru = RU_EFFECTS.get(path);
+        return ru != null ? ru : path;
+    }
+
     private void renderEffects(DrawContext context, List<StatusEffectInstance> effects, float x, float y, float animAlpha, float panelHeight) {
         float rowH = 10f;
         float panelW = 132f;
@@ -484,7 +536,9 @@ public class TargetHUD extends Module {
         float ty = y + 3f;
         for (StatusEffectInstance inst : effects) {
             try {
-                String name = transliterate(inst.getEffectType().value().getName().getString());
+                String name = ruEffectName(inst.getEffectType().getKey().isPresent()
+                        ? inst.getEffectType().getKey().get().getValue().getPath()
+                        : transliterate(inst.getEffectType().value().getName().getString()));
                 String amp = inst.getAmplifier() > 0 ? " " + (inst.getAmplifier() + 1) : "";
 
                 String time;

@@ -26,7 +26,6 @@ import tech.onetap.util.player.other.SlownessManager;
 import tech.onetap.util.rotation.Rotation;
 import tech.onetap.util.rotation.RotationComponent;
 import tech.onetap.util.commands.defaults.ClipBypass;
-import tech.onetap.util.telemetry.TelemetryReporter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +74,8 @@ public class ModuleStorage implements IMinecraft {
                 new CrystalAura(), new CrystalOptimizer(), new CrystalSpammer(),
                 new AiRecord(), new AntiAFK(), new AutoCaptcha(), new UseTracker(),
                 new ScoreboardHealth(), new SpecCordExploit(),
-                new MetaEvent(), new ClanFriend(), new FriendClick()
+                new MetaEvent(), new ClanFriend(), new FriendClick(),
+                new FriendCoords()
         ));
 
         Onetap.getInstance().getEventBus().register(this);
@@ -156,9 +156,8 @@ public class ModuleStorage implements IMinecraft {
                 }
     }
 
-    @Subscribe
+@Subscribe
     private void onUpdate(EventTick ignored) {
-        TelemetryReporter.tick();
         if (!SlownessManager.timeTasksIsEmpty()) SlownessManager.updateTimeTasks(true);
 
         ClipBypass.tick();
