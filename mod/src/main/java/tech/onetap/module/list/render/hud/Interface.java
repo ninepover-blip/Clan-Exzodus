@@ -1095,6 +1095,23 @@ public class Interface extends Module {
         }
     }
 
+    private void drawEffectIcon(DrawContext context, PotionItem item, float iconX, float iconY, int alpha) {
+        if (item == null || item.effect == null || alpha <= 0) return;
+        try {
+            net.minecraft.client.texture.Sprite sprite = mc.getStatusEffectSpriteManager().getSprite(item.effect);
+            if (sprite == null) return;
+            RenderSystem.setShaderColor(1f, 1f, 1f, MathHelper.clamp(alpha / 255f, 0f, 1f));
+            context.drawSpriteStretched(
+                    net.minecraft.client.render.RenderLayer::getGuiTextured,
+                    sprite,
+                    (int) iconX, (int) iconY, 9, 9,
+                    (alpha << 24) | 0xFFFFFF
+            );
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        } catch (Exception ignored) {
+        }
+    }
+
     private void renderPotionsOld(DrawContext context) {
         potionItems.sort(Comparator.comparing(pi -> pi.name));
         List<PotionItem> visible = potionItems.stream().filter(pi -> pi.active).toList();
@@ -1115,9 +1132,10 @@ public class Interface extends Module {
             String time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
             String text = item.name + " " + (item.amplifier + 1) + " -> " + time;
 
-            DrawUtil.drawText(font, text, posX, posY, ColorProvider.rgba(235, 235, 235, 255), fontSize);
+            drawEffectIcon(context, item, posX, posY, 255);
+            DrawUtil.drawText(font, text, posX + 12f, posY, ColorProvider.rgba(235, 235, 235, 255), fontSize);
 
-            float rowWidth = font.getWidth(text, fontSize);
+            float rowWidth = font.getWidth(text, fontSize) + 12f;
             if (rowWidth > maxWidth) maxWidth = rowWidth;
 
             posY += 9f;
@@ -1175,7 +1193,7 @@ public class Interface extends Module {
             float lvlW = Fonts.SFBOLD.get().getWidth(lvlText, fontSize);
             float timeW = Fonts.SFBOLD.get().getWidth(time, fontSize);
 
-            float rowW = padL + nameW + lvlW + 10f + timeW + padR;
+            float rowW = padL + 12f + nameW + lvlW + 10f + timeW + padR;
             targetWidth = Math.max(targetWidth, rowW);
         }
 
@@ -1242,11 +1260,13 @@ public class Interface extends Module {
                 float leftX = x + padL;
                 float textY = curY + (itemH / 2f) - (fontSize / 2f) - 1f; // как в Keybinds
 
-                float clipW = Math.max(0f, (timeX - 6f) - leftX);
-                Scissor.push();
-                Scissor.setFromComponentCoordinates(leftX, curY, clipW, itemH);
+                drawEffectIcon(context, item, leftX, curY + (itemH - 9f) / 2f, itemA);
 
-                DrawUtil.drawText(Fonts.SFBOLD.get(), item.name, leftX, textY,
+                float clipW = Math.max(0f, (timeX - 6f) - (leftX + 12f));
+                Scissor.push();
+                Scissor.setFromComponentCoordinates(leftX + 12f, curY, clipW, itemH);
+
+                DrawUtil.drawText(Fonts.SFBOLD.get(), item.name, leftX + 12f, textY,
                         ColorProvider.rgba(233, 233, 233, itemA), fontSize);
 
                 float nameW = Fonts.SFBOLD.get().getWidth(item.name, fontSize);
@@ -1255,7 +1275,7 @@ public class Interface extends Module {
                         ? ColorProvider.rgba(192, 100, 106, itemA)
                         : ColorProvider.rgba(200, 200, 200, itemA);
                 if(lvl > 1){
-                    DrawUtil.drawText(Fonts.SFBOLD.get(), lvlText, leftX + nameW, textY, lvlColor, fontSize);
+                    DrawUtil.drawText(Fonts.SFBOLD.get(), lvlText, leftX + 12f + nameW, textY, lvlColor, fontSize);
 
                 }
 
@@ -1559,7 +1579,7 @@ public class Interface extends Module {
         for (PotionItem p : visible) {
             int totalSec = Math.max(0, p.durationTicks / 20);
             String time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
-            float rw = bold.getWidth(p.name + " " + (p.amplifier + 1), 7f) + font.getWidth(time, 7f) + 16f;
+            float rw = bold.getWidth(p.name + " " + (p.amplifier + 1), 7f) + font.getWidth(time, 7f) + 28f;
             maxW = Math.max(maxW, rw);
         }
         float w = maxW;
@@ -1578,7 +1598,8 @@ public class Interface extends Module {
                 int totalSec = Math.max(0, p.durationTicks / 20);
                 String time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
                 String rowText = p.name + " " + (p.amplifier + 1);
-                DrawUtil.drawText(bold, rowText, x + 5f, curY, ColorProvider.rgba(235, 235, 235, a), 7f);
+                drawEffectIcon(context, p, x + 5f, curY, a);
+                DrawUtil.drawText(bold, rowText, x + 17f, curY, ColorProvider.rgba(235, 235, 235, a), 7f);
                 DrawUtil.drawText(font, time, x + w - font.getWidth(time, 7f) - 5f, curY, ColorProvider.setAlpha(ColorProvider.getThemeColor(), a), 7f);
                 curY += rowH;
             }
