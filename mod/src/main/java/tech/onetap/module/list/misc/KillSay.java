@@ -67,10 +67,17 @@ public class KillSay extends Module {
     private void onPacket(EventPacket event) {
         if (mc.player == null || mc.world == null || event.getType() != EventPacket.Type.RECEIVE) return;
         if (!(event.getPacket() instanceof EntityStatusS2CPacket packet)) return;
-        if (targetUuid == null) return;
 
         Entity entity = packet.getEntity(mc.world);
         if (!(entity instanceof PlayerEntity player) || player == mc.player) return;
+
+        // Тотем: сообщение шлём на любого игрока, а не только на отслеживаемую цель.
+        if (packet.getStatus() == 35 && totemEnabled.getValue()) {
+            sendMessage(pickRandom(getTotemMessages()), player.getName().getString());
+            return;
+        }
+
+        if (targetUuid == null) return;
         if (!player.getUuid().equals(targetUuid)) return;
 
         String name = targetName != null ? targetName : player.getName().getString();
@@ -78,8 +85,6 @@ public class KillSay extends Module {
         if (packet.getStatus() == 3 && killEnabled.getValue()) {
             sendMessage(pickRandom(getKillMessages()), name);
             resetTarget();
-        } else if (packet.getStatus() == 35 && totemEnabled.getValue()) {
-            sendMessage(pickRandom(getTotemMessages()), name);
         }
     }
 

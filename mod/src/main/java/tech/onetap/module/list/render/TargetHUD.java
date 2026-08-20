@@ -463,7 +463,12 @@ public class TargetHUD extends Module {
     }
 
     private void renderEffects(DrawContext context, LivingEntity livingEntity, float x, float y, float animAlpha) {
-        List<StatusEffectInstance> effects = new ArrayList<>(livingEntity.getStatusEffects());
+        List<StatusEffectInstance> effects;
+        try {
+            effects = new ArrayList<>(livingEntity.getStatusEffects());
+        } catch (Exception ignored) {
+            return;
+        }
         if (effects.isEmpty()) return;
 
         float rowH = 8f;
@@ -475,23 +480,32 @@ public class TargetHUD extends Module {
 
         float ty = y + 3f;
         for (StatusEffectInstance inst : effects) {
-            String name = inst.getEffectType().value().getName().getString();
-            String amp = inst.getAmplifier() > 0 ? " " + (inst.getAmplifier() + 1) : "";
-            int totalSec = Math.max(0, inst.getDuration() / 20);
-            String time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
-            String text = name + amp + " " + time;
+            try {
+                String name = inst.getEffectType().value().getName().getString();
+                String amp = inst.getAmplifier() > 0 ? " " + (inst.getAmplifier() + 1) : "";
 
-            int color = inst.getEffectType().value().getColor();
-            DrawUtil.drawRound(x + 2.5f, ty + 1.5f, 1.5f, 5f, 0.5f, color);
+                String time;
+                if (inst.getDuration() == StatusEffectInstance.INFINITE) {
+                    time = "**:**";
+                } else {
+                    int totalSec = Math.max(0, inst.getDuration() / 20);
+                    time = String.format("%d:%02d", totalSec / 60, totalSec % 60);
+                }
+                String text = name + amp + " " + time;
 
-            Scissor.push();
-            Scissor.setFromComponentCoordinates(x, y, panelW, totalH);
-            DrawUtil.drawText(Fonts.SFMEDIUM.get(), text, x + 6f, ty,
-                    ColorProvider.rgba(230, 235, 245, (int) (255 * animAlpha)), 6.5f);
-            Scissor.unset();
-            Scissor.pop();
+                int color = inst.getEffectType().value().getColor();
+                DrawUtil.drawRound(x + 2.5f, ty + 1.5f, 1.5f, 5f, 0.5f, color);
 
-            ty += rowH;
+                Scissor.push();
+                Scissor.setFromComponentCoordinates(x, y, panelW, totalH);
+                DrawUtil.drawText(Fonts.SFMEDIUM.get(), text, x + 6f, ty,
+                        ColorProvider.rgba(230, 235, 245, (int) (255 * animAlpha)), 6.5f);
+                Scissor.unset();
+                Scissor.pop();
+
+                ty += rowH;
+            } catch (Exception ignored) {
+            }
         }
     }
 
