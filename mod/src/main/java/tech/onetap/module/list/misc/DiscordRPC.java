@@ -1,0 +1,80 @@
+package tech.onetap.module.list.misc;
+
+import com.google.common.eventbus.Subscribe;
+import meteordevelopment.discordipc.DiscordIPC;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
+import net.minecraft.client.gui.screen.option.OptionsScreen;
+import tech.onetap.event.list.EventTick;
+import tech.onetap.module.Module;
+import tech.onetap.module.ModuleCategory;
+import tech.onetap.module.ModuleInformation;
+import tech.onetap.util.discord.ExtendedRichPresence;
+
+@ModuleInformation(moduleName = "Discord RPC", moduleDesc = "Discord Rich Presence", moduleCategory = ModuleCategory.MISC)
+public class DiscordRPC extends Module {
+
+    private final ExtendedRichPresence rpc = new ExtendedRichPresence();
+    private static final long APPLICATION_ID = 1528020097627852940L;
+    private boolean buttonsAdded = false;
+
+    @Override
+    public void onEnable() {
+        super.onEnable();
+        DiscordIPC.start(APPLICATION_ID, null);
+        rpc.setStart(System.currentTimeMillis() / 1000);
+        buttonsAdded = false;
+    }
+
+    @Override
+    public void onDisable() {
+        super.onDisable();
+        DiscordIPC.stop();
+    }
+
+    @Subscribe
+    private void onTick(EventTick e) {
+        String details;
+
+        if (mc.player != null) {
+            if (mc.getCurrentServerEntry() != null && mc.getCurrentServerEntry().address != null) {
+                details = "На сервере: " + mc.getCurrentServerEntry().address;
+            } else if (mc.isInSingleplayer()) {
+                details = "В одиночной игре";
+            } else {
+                details = "В игре";
+            }
+        } else if (mc.currentScreen != null) {
+            String screenName = mc.currentScreen.getClass().getSimpleName();
+            
+            if (mc.currentScreen instanceof TitleScreen) {
+                details = "В главном меню";
+            } else if (mc.currentScreen instanceof MultiplayerScreen) {
+                details = "В списке серверов";
+            } else if (mc.currentScreen instanceof OptionsScreen) {
+                details = "В настройках";
+            } else if (screenName.contains("Alt") || screenName.contains("Account")) {
+                details = "Выбирает аккаунт";
+            } else {
+                details = "В главном меню";
+            }
+        } else {
+            details = "В главном меню";
+        }
+
+        rpc.setDetails(details);
+        
+        String username = mc.player != null ? String.valueOf(mc.player.getName()) : "В меню";
+        
+        rpc.setState("User: " + username);
+        rpc.setLargeImage("logo", "LayF infinyty 1.21.4");
+
+        if (!buttonsAdded) {
+            rpc.addButton("Сайт чита", "https://clan-exzodus.vercel.app/");
+            rpc.addButton("Github чита", "https://github.com/ninepover-blip/Clan-Exzodus");
+            buttonsAdded = true;
+        }
+
+        DiscordIPC.setActivity(rpc);
+    }
+}

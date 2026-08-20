@@ -1,0 +1,28 @@
+# Node / Vercel
+node_modules/
+.vercel/
+*.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+
+# Launcher build artifacts
+launcher/build/
+launcher/dist/
+
+# Java / Gradle
+mod/build/
+mod/.gradle/
+mod/.options/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store
