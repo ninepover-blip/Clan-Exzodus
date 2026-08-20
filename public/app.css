@@ -97,6 +97,11 @@ button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 input, select { width: 100%; background: #1b1825; border: 1px solid #3d354e; border-radius: 11px; padding: 13px; color: white; margin: 7px 0 14px; outline: none; }
 input:focus, select:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(139,92,246,.14); }
 .row { display: flex; gap: 10px; }
+.dl { margin-top: 14px; display: none; width: min(420px, 100%); }
+.dl.on { display: block; }
+.dl-bar { height: 14px; border-radius: 99px; background: #1b1825; border: 1px solid #3d354e; overflow: hidden; }
+.dl-fill { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, #7134e8, #a66cff); transition: width .2s ease; }
+.dl-info { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--muted); }
 .status { min-height: 22px; color: #ff8297; }
 .dashboard { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 .side { background: rgba(16,16,23,.9); padding: 30px 22px; border-right: 1px solid var(--line); }
