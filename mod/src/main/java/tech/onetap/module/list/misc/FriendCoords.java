@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 public class FriendCoords extends Module {
 
     private static final Pattern PLAYER_PREFIX = Pattern.compile("(?i)<([A-Za-z0-9_]{1,16})>\\s*(.*)");
+    private static final Pattern TEAM_PREFIX = Pattern.compile("(?i)^\\s*(?:\\[[^\\]]{1,32}\\]\\s*)*([A-Za-z0-9_]{1,16})\\s*(?::|»|>|\\|)\\s*(.+)$");
     private static final Pattern COORDS3 = Pattern.compile("(-?\\d{1,8})\\s+(-?\\d{1,8})\\s+(-?\\d{1,8})");
     private static final Pattern COORDS2 = Pattern.compile("(-?\\d{1,8})\\s+(-?\\d{1,8})");
     private static final Pattern HELP = Pattern.compile("(?i)(хелп|хелпа|помог|помощь|спас|help)");
@@ -79,27 +80,17 @@ public class FriendCoords extends Module {
                 if (p != null) senderName = p.getName().getString();
             }
         } else if (event.getPacket() instanceof ProfilelessChatMessageS2CPacket packet) {
-            String full = packet.message().getString();
-            Matcher m = PLAYER_PREFIX.matcher(full);
-            if (m.matches()) {
-                senderName = m.group(1);
-                message = m.group(2);
-            } else {
-                message = full;
-            }
+            String[] s = extractSenderAndMessage(packet.message().getString());
+            senderName = s[0];
+            message = s[1];
         } else if (event.getPacket() instanceof GameMessageS2CPacket packet) {
-            String full = packet.content().getString();
-            Matcher m = PLAYER_PREFIX.matcher(full);
-            if (m.matches()) {
-                senderName = m.group(1);
-                message = m.group(2);
-            } else {
-                message = full;
-            }
+            String[] s = extractSenderAndMessage(packet.content().getString());
+            senderName = s[0];
+            message = s[1];
         }
 
         if (senderName == null || message == null) return;
-        if (!FriendRepository.isFriend(senderName)) return;
+        if (!FriendRepository.isFriendName(senderName)) return;
 
         String clean = message.replaceAll("§.", "");
 
@@ -121,6 +112,21 @@ public class FriendCoords extends Module {
         }
     }
 
+    private String[] extractSenderAndMessage(String full) {
+        Matcher m = PLAYER_PREFIX.matcher(full);
+        if (m.matches()) return new String[]{m.group(1), m.group(2)};
+        Matcher t = TEAM_PREFIX.matcher(full);
+        if (t.matches()) return new String[]{t.group(1), t.group(2)};
+        int sp = full.indexOf(' ');
+        if (sp > 0) {
+            String first = full.substring(0, sp);
+            if (FriendRepository.isFriendName(first)) {
+                return new String[]{first, full.substring(sp + 1)};
+            }
+        }
+        return new String[]{null, full};
+    }
+
     private void placeMarker(String name, double x, double y, double z, boolean hasY) {
         Marker marker = new Marker();
         marker.x = x;
@@ -137,6 +143,9 @@ public class FriendCoords extends Module {
                     + Formatting.GOLD + " ПРОСИТ ПОМОЩИ! Координаты: " + Formatting.WHITE + coords);
         }
         ChatUtil.send(Formatting.AQUA + "Метка поставлена на координаты: " + Formatting.WHITE + coords);
+        for (int i = 0; i < 4; i++) {
+            mc.getNetworkHandler().sendChatMessage("Друг " + name + " просит помощи! Координаты: " + coords + " — нужна помощь!");
+        }
     }
 
     private String formatCoords(double x, double y, double z, boolean hasY) {

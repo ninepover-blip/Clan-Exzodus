@@ -119,7 +119,7 @@ public class ESP extends Module {
             Entity entity = entry.getKey();
 
             if (entity instanceof LivingEntity living) {
-                boolean friend = FriendRepository.isFriend(entity.getName().getString());
+                boolean friend = FriendRepository.isFriendName(entity.getNameForScoreboard());
 
                 float hpOffset = 3f;
                 float out = 0.5f;
@@ -154,7 +154,7 @@ public class ESP extends Module {
 
                 // Display name keeps the server's donation/clan prefix and the real player name.
                 Text name = living.getDisplayName();
-                boolean nameFriend = FriendRepository.isFriend(living.getNameForScoreboard());
+                boolean nameFriend = FriendRepository.isFriendName(living.getNameForScoreboard());
                 int nameColor = nameFriend ? rgba(85, 255, 85, 255) : -1;
                 float nameLength = mc.textRenderer.getWidth(name);
 

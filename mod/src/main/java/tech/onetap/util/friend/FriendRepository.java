@@ -69,6 +69,17 @@ public class FriendRepository implements QuickLogger {
         return friends.stream().anyMatch(f -> (f.name().equalsIgnoreCase(friend)));
     }
 
+    /** Проверка по имени с возможным серверным префиксом (клан/донат/ранг). */
+    public static boolean isFriendName(String full) {
+        if (full == null || full.isEmpty()) return false;
+        if (isFriend(full)) return true;
+        String lower = full.toLowerCase(Locale.ROOT);
+        for (Friend f : friends) {
+            if (lower.endsWith(f.name().toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
+    }
+
     public static Friend getFriend(String name) {
         return friends.stream()
                 .filter(f -> f.name().equalsIgnoreCase(name))
