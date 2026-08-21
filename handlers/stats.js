@@ -1,39 +1,55 @@
-import {json,sql} from '../lib/core.js';
+import { json, sql } from '../lib/core.js';
 
-export default async function handler(req,res){
-  if(req.method!=='GET')return json(res,405,{message:'GET required'});
+async function one(text, fallback = 0) {
+  try {
+    const r = await sql.unsafe(text);
+    const row = r[0];
+    if (!row) return fallback;
+    const v = row.n ?? Object.values(row)[0];
+    return v == null ? fallback : Number(v);
+  } catch (e) {
+    console.error('stats one err:', e.message);
+    return fallback;
+  }
+}
+async function rows(text, fallback = []) {
+  try { return await sql.unsafe(text); } catch (e) { console.error('stats rows err:', e.message); return fallback; }
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') return json(res, 405, { message: 'GET required' });
 
   const [
     users, downloads, keys, keysInf, keysLob, serverTotal, serverTop, online, launchesInf, launchesLob, launchesTotal
   ] = await Promise.all([
-    sql`select count(*)::int as n from users where role='user'`,
-    sql`select count(*)::int as n from download_events`,
-    sql`select count(*)::int as n from licenses`,
-    sql`select count(*)::int as n from licenses where software='infinity'`,
-    sql`select count(*)::int as n from licenses where software='lobok'`,
-    sql`select count(*)::int as n from server_joins`,
-    sql`select server_address as server, join_count as joins from server_joins order by join_count desc, server_address limit 10`,
-    sql`select count(*)::int as n from telemetry_sessions where last_seen>now()-interval '5 minutes'`,
-    sql`select count(*)::int as n from launch_events where software='infinity'`,
-    sql`select count(*)::int as n from launch_events where software='lobok'`,
-    sql`select count(*)::int as n from launch_events`,
+    one(`select count(*)::int as n from users where role='user'`),
+    one(`select count(*)::int as n from download_events`),
+    one(`select count(*)::int as n from licenses`),
+    one(`select count(*)::int as n from licenses where software='infinity'`),
+    one(`select count(*)::int as n from licenses where software='lobok'`),
+    one(`select count(*)::int as n from server_joins`),
+    rows(`select server_address as server, join_count as joins from server_joins order by join_count desc, server_address limit 10`),
+    one(`select count(*)::int as n from telemetry_sessions where last_seen>now()-interval '5 minutes'`),
+    one(`select count(*)::int as n from launch_events where software='infinity'`),
+    one(`select count(*)::int as n from launch_events where software='lobok'`),
+    one(`select count(*)::int as n from launch_events`),
   ]);
 
   const result = {
-    registrations: users[0].n,
-    downloads: downloads[0].n,
-    keys: keys[0].n,
-    keysBySoftware: { infinity: keysInf[0].n, lobok: keysLob[0].n },
-    serversTotal: serverTotal[0].n,
+    registrations: users,
+    downloads,
+    keys,
+    keysBySoftware: { infinity: keysInf, lobok: keysLob },
+    serversTotal: serverTotal,
     serversTop: serverTop,
-    online: online[0].n,
-    launchesTotal: launchesTotal[0].n,
+    online,
+    launchesTotal,
     bySoftware: {
-      infinity: { keys: keysInf[0].n, launches: launchesInf[0].n },
-      lobok: { keys: keysLob[0].n, launches: launchesLob[0].n },
+      infinity: { keys: keysInf, launches: launchesInf },
+      lobok: { keys: keysLob, launches: launchesLob },
     },
   };
 
-  res.setHeader('Cache-Control','public, max-age=10, s-maxage=10');
-  return json(res,200,result);
+  res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=10');
+  return json(res, 200, result);
 }

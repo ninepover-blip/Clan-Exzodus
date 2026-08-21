@@ -2,6 +2,17 @@ import {json,method,sql,requireActor} from '../lib/core.js';
 
 // Идемпотентная миграция схемы. Запускается один раз админом (/api/migrate).
 const STATEMENTS = [
+  `create table if not exists telemetry_sessions (
+     user_id uuid primary key,
+     nickname text not null,
+     server_address text not null,
+     last_seen timestamptz not null default now()
+   )`,
+  `create table if not exists download_events (
+     id bigserial primary key,
+     kind text not null,
+     created_at timestamptz not null default now()
+   )`,
   `alter table licenses add column if not exists software text check (software is null or software in ('infinity','lobok'))`,
   `alter table orders add column if not exists software text check (software is null or software in ('infinity','lobok'))`,
   `alter table releases add column if not exists software text not null default 'infinity' check (software in ('infinity','lobok'))`,
