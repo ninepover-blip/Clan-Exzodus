@@ -1,0 +1,21 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Статистика — EXZODUS</title><link rel="stylesheet" href="/app.css"></head><body>
+<div class="wrap"><nav class="nav"><div class="brand">EXZODUS</div><div class="links" id="accountNav"><a href="/">Главная</a><a href="/prices.html">Цены</a><button class="ghost" onclick="auth(false)">Войти</button><button onclick="auth(true)">Регистрация</button></div></nav>
+<section class="section"><div class="eyebrow">LIVE STATISTICS</div><h2>EXZODUS — статистика за всё время</h2><div class="grid"><article class="card"><h3>Регистраций</h3><div class="price" id="statUsers">—</div></article><article class="card"><h3>Скачиваний лаунчера</h3><div class="price" id="statDownloads">—</div></article><article class="card"><h3>Ключей выдано (всего)</h3><div class="price" id="statKeys">—</div></article><article class="card"><h3>Серверов за всё время</h3><div class="price" id="statServersTotal">—</div></article><article class="card"><h3>Играют сейчас</h3><div class="price" id="statOnline">—</div></article></div>
+<div class="grid" style="margin-top:18px">
+<article class="card"><h3>Infinity 1.21.4 (Fabric)</h3><p class="muted">Ключей: <b id="keysInf">—</b></p><p class="muted">Запусков: <b id="launchesInf">—</b></p></article>
+<article class="card"><h3>Lobok Client 1.16.5</h3><p class="muted">Ключей: <b id="keysLob">—</b></p><p class="muted">Запусков: <b id="launchesLob">—</b></p></article>
+</div>
+<section class="card" style="margin-top:18px"><h3>Топ серверов за всё время (по числу заходов)</h3><div id="statServers" class="muted">Нет данных</div></section>
+</section></div>
+<script>
+const token=()=>localStorage.getItem('token')||'';
+let registering=false;
+function auth(r){registering=r;modal.classList.add('open');authTitle.textContent=r?'Регистрация':'Вход';nickLabel.style.display=r?'block':'none'}function closeAuth(){modal.classList.remove('open')}
+async function api(path,body,t=token()){const r=await fetch('/api/'+path,{method:'POST',headers:{'content-type':'application/json',...(t?{authorization:'Bearer '+t}:{})},body:JSON.stringify(body)}),j=await r.json();if(!r.ok)throw Error(j.message||'Ошибка');return j}
+async function submitAuth(e){e.preventDefault();try{const j=await api('auth',{action:registering?'register':'login',login:login.value,password:password.value,nickname:nickname.value},'');localStorage.setItem('token',j.token);location='/cabinet'}catch(e){status.textContent=e.message}}
+async function syncSession(){if(!token())return;try{const j=await api('auth',{action:'profile'});accountNav.innerHTML=`<a href="/">Главная</a><a href="/prices.html">Цены</a><span class="muted">@${j.user.login}</span><a class="btn ghost" href="/cabinet">Кабинет</a><button onclick="logoutSession()">Выйти</button>`}catch{localStorage.removeItem('token')}}function logoutSession(){localStorage.removeItem('token');location.reload()}
+async function loadStats(){try{const s=await fetch('/api/stats').then(r=>r.json());statUsers.textContent=s.registrations;statDownloads.textContent=s.downloads;statKeys.textContent=s.keys;statServersTotal.textContent=s.serversTotal;statOnline.textContent=s.online;if(s.bySoftware){keysInf.textContent=s.bySoftware.infinity.keys;launchesInf.textContent=s.bySoftware.infinity.launches;keysLob.textContent=s.bySoftware.lobok.keys;launchesLob.textContent=s.bySoftware.lobok.launches}statServers.innerHTML=s.serversTop.length?s.serversTop.map((x,i)=>`<p>${i+1}. <b>${x.server}</b> — ${x.joins} заходов</p>`).join(''):'Нет данных'}catch{}}
+setInterval(loadStats,15000);syncSession();loadStats();
+</script>
+<div class="modal" id="modal"><form class="dialog" onsubmit="submitAuth(event)"><h2 id="authTitle">Вход</h2><label>Логин<input id="login" required></label><label>Пароль<input id="password" type="password" minlength="8" required></label><label id="nickLabel" style="display:none">Ник Minecraft<input id="nickname"></label><div class="status" id="status"></div><div class="row"><button type="button" class="ghost" onclick="closeAuth()">Закрыть</button><button type="submit">Продолжить</button></div></form></div>
+</body></html>

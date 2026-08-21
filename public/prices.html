@@ -1,0 +1,23 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Цены — EXZODUS</title><link rel="stylesheet" href="/app.css"></head><body>
+<div class="wrap"><nav class="nav"><div class="brand">EXZODUS</div><div class="links" id="accountNav"><a href="/">Главная</a><a href="/stats.html">Статистика</a><button class="ghost" onclick="auth(false)">Войти</button><button onclick="auth(true)">Регистрация</button></div></nav>
+<section class="section"><div class="eyebrow">ТАРИФЫ</div><h2>Цены EXZODUS</h2>
+<label>Валюта <select id="currency" onchange="renderPrices()"><option value="RUB">Рубли</option><option value="UAH">Гривны</option></select></label>
+<h3 class="eyebrow" style="margin-top:28px">Infinity 1.21.4 (Fabric)</h3>
+<div class="grid"><article class="card"><h3>30 дней</h3><div class="price" id="pMonth"></div><p class="muted">Обновления и один HWID</p><button onclick="buy('infinity')">Купить в Telegram</button></article><article class="card"><h3>90 дней</h3><div class="price" id="pQuarter"></div><p class="muted">Сезонный доступ</p><button onclick="buy('infinity')">Купить в Telegram</button></article><article class="card"><h3>Навсегда</h3><div class="price" id="pForever"></div><p class="muted">Пожизненный доступ</p><button onclick="buy('infinity')">Купить в Telegram</button></article></div>
+<h3 class="eyebrow" style="margin-top:28px">Lobok Client 1.16.5</h3>
+<div class="grid"><article class="card"><h3>Навсегда</h3><div class="price" id="pLobok"></div><p class="muted">Только пожизненный доступ для версии 1.16.5</p><button onclick="buy('lobok')">Купить в Telegram</button></article></div>
+<section class="card" style="margin-top:24px"><h3>Бесплатно (только Infinity)</h3><p class="muted">Каждый день 3 фри-ключа Infinity на 24 часа. Получить можно на главной странице после входа.</p><a class="btn ghost" href="/">На главную за фри-ключом</a></section>
+</section></div>
+<div class="modal" id="modal"><form class="dialog" onsubmit="submitAuth(event)"><h2 id="authTitle">Вход</h2><label>Логин<input id="login" required></label><label>Пароль<input id="password" type="password" minlength="8" required></label><label id="nickLabel" style="display:none">Ник Minecraft<input id="nickname"></label><div class="status" id="status"></div><div class="row"><button type="button" class="ghost" onclick="closeAuth()">Закрыть</button><button type="submit">Продолжить</button></div></form></div>
+<script>
+const TG={infinity:'https://t.me/HET_CTPAXA_x',lobok:'https://t.me/LobokClient'};
+const prices={RUB:{month:'113 ₽',quarter:'266 ₽',forever:'666 ₽',lobok:'500 ₽'},UAH:{month:'46 грн',quarter:'99 грн',forever:'266 грн',lobok:'200 грн'}};
+function renderPrices(){const p=prices[currency.value];pMonth.textContent=p.month;pQuarter.textContent=p.quarter;pForever.textContent=p.forever;pLobok.textContent=p.lobok}renderPrices();
+let registering=false;const token=()=>localStorage.getItem('token')||'';
+function auth(r){registering=r;modal.classList.add('open');authTitle.textContent=r?'Регистрация':'Вход';nickLabel.style.display=r?'block':'none'}function closeAuth(){modal.classList.remove('open')}
+async function api(path,body,t=token()){const r=await fetch('/api/'+path,{method:'POST',headers:{'content-type':'application/json',...(t?{authorization:'Bearer '+t}:{})},body:JSON.stringify(body)}),j=await r.json();if(!r.ok)throw Error(j.message||'Ошибка');return j}
+async function submitAuth(e){e.preventDefault();try{const j=await api('auth',{action:registering?'register':'login',login:login.value,password:password.value,nickname:nickname.value},'');localStorage.setItem('token',j.token);location='/cabinet'}catch(e){status.textContent=e.message}}
+function buy(software){if(!token())return auth(false);window.open(TG[software]||TG.infinity,'_blank')}
+async function syncSession(){if(!token())return;try{const j=await api('auth',{action:'profile'});accountNav.innerHTML=`<a href="/">Главная</a><a href="/stats.html">Статистика</a><span class="muted">@${j.user.login}</span><a class="btn ghost" href="/cabinet">Кабинет</a><button onclick="logoutSession()">Выйти</button>`}catch{localStorage.removeItem('token')}}function logoutSession(){localStorage.removeItem('token');location.reload()}
+syncSession();
+</script></body></html>

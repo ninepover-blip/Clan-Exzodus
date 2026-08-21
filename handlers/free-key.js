@@ -14,7 +14,7 @@ export default async function handler(req,res){
   try{
     const claims=await sql`insert into free_key_claims(user_id,daily_slot) select ${user.id},slot from generate_series(1,3) slot where not exists(select 1 from free_key_claims where claim_date=current_date and daily_slot=slot) order by slot limit 1 returning id`;
     if(!claims[0])return json(res,429,{message:'Все 3 бесплатных ключа на сегодня уже разобраны.',remaining:0,nextAt:Number(next[0].ms)});
-    const licenses=await sql`insert into licenses(key_hash,key_cipher,key_hint,duration_days,user_id,max_activations) values(${sha256(key)},${key},${key.slice(-6)},1,${user.id},1) returning id`;
+    const licenses=await sql`insert into licenses(key_hash,key_cipher,key_hint,duration_days,user_id,max_activations,software) values(${sha256(key)},${key},${key.slice(-6)},1,${user.id},1,'infinity') returning id`;
     await sql`update free_key_claims set license_id=${licenses[0].id} where id=${claims[0].id}`;
     return json(res,200,{key,message:'Ключ на 24 часа создан.',remaining:remaining-1,nextAt:Number(next[0].ms)});
   }catch(error){
