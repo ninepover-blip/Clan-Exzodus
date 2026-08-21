@@ -1,14 +1,17 @@
-import {json,method,sql,requireActor} from '../lib/core.js';
+import {json,method,sql,requireActor,validSoftware} from '../lib/core.js';
 export const config={api:{bodyParser:{sizeLimit:'3mb'}}};
 export default async function handler(req,res){
   if(!method(req,res))return; const admin=await requireActor(req,res,true); if(!admin)return; const b=req.body||{};
   const channel = b.channel === 'test' ? 'test' : 'stable';
+  const software = validSoftware(b.software) ? b.software : 'infinity';
   if(b.action==='begin'){
-    if(!['mod','launcher'].includes(b.kind)||!b.version||!b.filename||!b.sha256||Number(b.chunkCount)<1)return json(res,400,{message:'Некорректные данные версии'});
-    const previous=await sql`select id,published from releases where kind=${b.kind} and channel=${channel} and version=${b.version} limit 1`;
+    if(!['mod','launcher'].includes(b.kind))return json(res,400,{message:'Некорректный тип релиза'});
+    if(b.kind==='mod' && !validSoftware(b.software))return json(res,400,{message:'Укажите софт (infinity/lobok)'});
+    if(!b.version||!b.filename||!b.sha256||Number(b.chunkCount)<1)return json(res,400,{message:'Некорректные данные версии'});
+    const previous=await sql`select id,published from releases where kind=${b.kind} and channel=${channel} and software=${software} and version=${b.version} limit 1`;
     if(previous[0]?.published)return json(res,409,{message:'Эта версия уже опубликована. Укажите новую версию.'});
     if(previous[0])await sql`delete from releases where id=${previous[0].id}`;
-    const rows=await sql`insert into releases(kind,channel,version,filename,sha256,size_bytes,chunk_count) values(${b.kind},${channel},${b.version},${b.filename},${b.sha256},${Number(b.size)},${Number(b.chunkCount)}) returning id`;
+    const rows=await sql`insert into releases(kind,channel,version,filename,sha256,size_bytes,chunk_count,software) values(${b.kind},${channel},${b.version},${b.filename},${b.sha256},${Number(b.size)},${Number(b.chunkCount)},${software}) returning id`;
     return json(res,200,{releaseId:rows[0].id});
   }
   if(b.action==='chunk'){
@@ -29,6 +32,6 @@ export default async function handler(req,res){
     return json(res,200,{ok:true});
   }
 
-  if(b.action==='list') return json(res,200,{releases:await sql`select id,kind,channel,version,filename,size_bytes as size,published,created_at as "createdAt" from releases order by created_at desc limit 100`});
+  if(b.action==='list') return json(res,200,{releases:await sql`select id,kind,channel,software,version,filename,size_bytes as size,published,created_at as "createdAt" from releases order by created_at desc limit 100`});
   return json(res,400,{message:'Неизвестное действие'});
 }

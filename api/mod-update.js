@@ -1,15 +1,16 @@
-import {json,method,sql,requireActor} from '../lib/core.js';
+import {json,method,sql,requireActor,validSoftware} from '../lib/core.js';
 export default async function handler(req,res){
   if(!method(req,res))return; const b=req.body||{};
   const channel = b.channel === 'test' ? 'test' : 'stable';
+  const software = validSoftware(b.software) ? b.software : 'infinity';
 
   // Манифест текущего релиза мода. Канал test доступен только админам.
   if(b.action==='manifest'){
     if(channel === 'test'){
       const admin=await requireActor(req,res,true); if(!admin)return;
     }
-    const rows=await sql`select id,version,filename,sha256,size_bytes as size,chunk_count from releases where kind='mod' and channel=${channel} and published=true order by created_at desc limit 1`;
-    return json(res,200,{release:rows[0]||null});
+    const rows=await sql`select id,version,filename,sha256,size_bytes as size,chunk_count from releases where kind='mod' and channel=${channel} and software=${software} and published=true order by created_at desc limit 1`;
+    return json(res,200,{release:rows[0]||null,software});
   }
 
   // Скачивание фрагмента релиза.
@@ -23,11 +24,12 @@ export default async function handler(req,res){
     const admin=await requireActor(req,res,true); if(!admin)return;
 
     if(b.action==='begin'){
+      if(!validSoftware(b.software))return json(res,400,{message:'Укажите софт (infinity/lobok)'});
       if(!b.version||!b.filename||!b.sha256||Number(b.chunkCount)<1)return json(res,400,{message:'Некорректные данные версии'});
-      const previous=await sql`select id,published from releases where kind='mod' and channel=${channel} and version=${b.version} limit 1`;
+      const previous=await sql`select id,published from releases where kind='mod' and channel=${channel} and software=${b.software} and version=${b.version} limit 1`;
       if(previous[0]?.published)return json(res,409,{message:'Эта версия уже опубликована. Укажите новую версию.'});
       if(previous[0])await sql`delete from releases where id=${previous[0].id}`;
-      const rows=await sql`insert into releases(kind,channel,version,filename,sha256,size_bytes,chunk_count) values('mod',${channel},${b.version},${b.filename},${b.sha256},${Number(b.size)},${Number(b.chunkCount)}) returning id`;
+      const rows=await sql`insert into releases(kind,channel,version,filename,sha256,size_bytes,chunk_count,software) values('mod',${channel},${b.version},${b.filename},${b.sha256},${Number(b.size)},${Number(b.chunkCount)},${b.software}) returning id`;
       return json(res,200,{releaseId:rows[0].id});
     }
 

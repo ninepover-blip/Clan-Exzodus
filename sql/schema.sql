@@ -96,3 +96,27 @@ create table if not exists download_events (
   kind text not null,
   created_at timestamptz not null default now()
 );
+
+-- Два независимых продукта: infinity (1.21.4 Fabric) и lobok (1.16.5).
+-- У каждого — свои ключи и релизы.
+alter table licenses add column if not exists software text check (software is null or software in ('infinity','lobok'));
+alter table orders add column if not exists software text check (software is null or software in ('infinity','lobok'));
+alter table releases add column if not exists software text not null default 'infinity' check (software in ('infinity','lobok'));
+drop index if exists releases_kind_channel_version;
+create unique index if not exists releases_kind_channel_software_version on releases(kind, channel, software, version);
+
+-- Серверная статистика за всё время.
+create table if not exists server_joins (
+  server_address text primary key,
+  join_count bigint not null default 0,
+  first_joined timestamptz,
+  last_joined timestamptz
+);
+
+create table if not exists launch_events (
+  id bigserial primary key,
+  software text not null,
+  server_address text,
+  created_at timestamptz not null default now()
+);
+
