@@ -1,8 +1,8 @@
 import { json, sql } from '../lib/core.js';
 
-async function one(text, fallback = 0) {
+async function one(query, fallback = 0) {
   try {
-    const r = await sql.unsafe(text);
+    const r = await query;
     const row = r[0];
     if (!row) return fallback;
     const v = row.n ?? Object.values(row)[0];
@@ -12,8 +12,8 @@ async function one(text, fallback = 0) {
     return fallback;
   }
 }
-async function rows(text, fallback = []) {
-  try { return await sql.unsafe(text); } catch (e) { console.error('stats rows err:', e.message); return fallback; }
+async function rows(query, fallback = []) {
+  try { return await query; } catch (e) { console.error('stats rows err:', e.message); return fallback; }
 }
 
 export default async function handler(req, res) {
@@ -22,17 +22,17 @@ export default async function handler(req, res) {
   const [
     users, downloads, keys, keysInf, keysLob, serverTotal, serverTop, online, launchesInf, launchesLob, launchesTotal
   ] = await Promise.all([
-    one(`select count(*)::int as n from users where role='user'`),
-    one(`select count(*)::int as n from download_events`),
-    one(`select count(*)::int as n from licenses`),
-    one(`select count(*)::int as n from licenses where software='infinity'`),
-    one(`select count(*)::int as n from licenses where software='lobok'`),
-    one(`select count(*)::int as n from server_joins`),
-    rows(`select server_address as server, join_count as joins from server_joins order by join_count desc, server_address limit 10`),
-    one(`select count(*)::int as n from telemetry_sessions where last_seen>now()-interval '5 minutes'`),
-    one(`select count(*)::int as n from launch_events where software='infinity'`),
-    one(`select count(*)::int as n from launch_events where software='lobok'`),
-    one(`select count(*)::int as n from launch_events`),
+    one(sql`select count(*)::int as n from users where role='user'`),
+    one(sql`select count(*)::int as n from download_events`),
+    one(sql`select count(*)::int as n from licenses`),
+    one(sql`select count(*)::int as n from licenses where software='infinity'`),
+    one(sql`select count(*)::int as n from licenses where software='lobok'`),
+    one(sql`select count(*)::int as n from server_joins`),
+    rows(sql`select server_address as server, join_count as joins from server_joins order by join_count desc, server_address limit 10`),
+    one(sql`select count(*)::int as n from telemetry_sessions where last_seen>now()-interval '5 minutes'`),
+    one(sql`select count(*)::int as n from launch_events where software='infinity'`),
+    one(sql`select count(*)::int as n from launch_events where software='lobok'`),
+    one(sql`select count(*)::int as n from launch_events`),
   ]);
 
   const result = {

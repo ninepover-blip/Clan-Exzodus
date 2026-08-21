@@ -1,46 +1,43 @@
-import {json,method,sql,requireActor} from '../lib/core.js';
+import { json, method, sql, requireActor } from '../lib/core.js';
 
-// Идемпотентная миграция схемы. Запускается один раз админом (/api/migrate).
 const STATEMENTS = [
-  `create table if not exists telemetry_sessions (
+  { label: 'telemetry_sessions', q: sql`create table if not exists telemetry_sessions (
      user_id uuid primary key,
      nickname text not null,
      server_address text not null,
      last_seen timestamptz not null default now()
-   )`,
-  `create table if not exists download_events (
+   )` },
+  { label: 'download_events', q: sql`create table if not exists download_events (
      id bigserial primary key,
      kind text not null,
      created_at timestamptz not null default now()
-   )`,
-  `alter table licenses add column if not exists software text check (software is null or software in ('infinity','lobok'))`,
-  `alter table orders add column if not exists software text check (software is null or software in ('infinity','lobok'))`,
-  `alter table releases add column if not exists software text not null default 'infinity' check (software in ('infinity','lobok'))`,
-  `drop index if exists releases_kind_channel_version`,
-  `create unique index if not exists releases_kind_channel_software_version on releases(kind, channel, software, version)`,
-
-  `create table if not exists server_joins (
+   )` },
+  { label: 'licenses.software', q: sql`alter table licenses add column if not exists software text check (software is null or software in ('infinity','lobok'))` },
+  { label: 'orders.software', q: sql`alter table orders add column if not exists software text check (software is null or software in ('infinity','lobok'))` },
+  { label: 'releases.software', q: sql`alter table releases add column if not exists software text not null default 'infinity' check (software in ('infinity','lobok'))` },
+  { label: 'drop old index', q: sql`drop index if exists releases_kind_channel_version` },
+  { label: 'releases unique', q: sql`create unique index if not exists releases_kind_channel_software_version on releases(kind, channel, software, version)` },
+  { label: 'server_joins', q: sql`create table if not exists server_joins (
      server_address text primary key,
      join_count bigint not null default 0,
      first_joined timestamptz,
      last_joined timestamptz
-   )`,
-
-  `create table if not exists launch_events (
+   )` },
+  { label: 'launch_events', q: sql`create table if not exists launch_events (
      id bigserial primary key,
      software text not null,
      server_address text,
      created_at timestamptz not null default now()
-   )`,
+   )` },
 ];
 
-export default async function handler(req,res){
-  if(!method(req,res))return;
-  const admin=await requireActor(req,res,true); if(!admin)return;
-  const results=[];
-  for(const sqlText of STATEMENTS){
-    try { await sql.unsafe(sqlText); results.push('OK: '+sqlText.slice(0,60)); }
-    catch(e){ results.push('ERR: '+sqlText.slice(0,60)+' -> '+e.message); }
+export default async function handler(req, res) {
+  if (!method(req, res)) return;
+  const admin = await requireActor(req, res, true); if (!admin) return;
+  const results = [];
+  for (const s of STATEMENTS) {
+    try { await s.q; results.push('OK: ' + s.label); }
+    catch (e) { results.push('ERR: ' + s.label + ' -> ' + e.message); }
   }
-  return json(res,200,{done:results.length,results});
+  return json(res, 200, { done: results.length, results });
 }
