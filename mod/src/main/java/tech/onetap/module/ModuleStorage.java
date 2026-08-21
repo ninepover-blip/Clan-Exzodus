@@ -26,6 +26,7 @@ import tech.onetap.util.player.other.SlownessManager;
 import tech.onetap.util.rotation.Rotation;
 import tech.onetap.util.rotation.RotationComponent;
 import tech.onetap.util.commands.defaults.ClipBypass;
+import tech.onetap.util.telemetry.TelemetryReporter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -163,6 +164,8 @@ public class ModuleStorage implements IMinecraft {
         ClipBypass.tick();
 
         if (mc.player == null) return;
+
+        TelemetryReporter.tick();
 
         if (PartyApiClient.isEnabled()) {
             PartyApiClient.fetchPartyStateAsync();
