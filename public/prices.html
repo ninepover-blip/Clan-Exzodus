@@ -3,9 +3,9 @@
 <section class="section"><div class="eyebrow">ТАРИФЫ</div><h2>Цены EXZODUS</h2>
 <label>Валюта <select id="currency" onchange="renderPrices()"><option value="RUB">Рубли</option><option value="UAH">Гривны</option></select></label>
 <h3 class="eyebrow" style="margin-top:28px">Infinity 1.21.4 (Fabric)</h3>
-<div class="grid"><article class="card"><h3>30 дней</h3><div class="price" id="pMonth"></div><p class="muted">Обновления и один HWID</p><button onclick="buy('infinity')">Купить в Telegram</button></article><article class="card"><h3>90 дней</h3><div class="price" id="pQuarter"></div><p class="muted">Сезонный доступ</p><button onclick="buy('infinity')">Купить в Telegram</button></article><article class="card"><h3>Навсегда</h3><div class="price" id="pForever"></div><p class="muted">Пожизненный доступ</p><button onclick="buy('infinity')">Купить в Telegram</button></article></div>
+<div class="grid"><article class="card"><h3>30 дней</h3><div class="price" id="pMonth"></div><p class="muted">Обновления и один HWID</p><button onclick="buy('infinity','30')">Купить в Telegram</button></article><article class="card"><h3>90 дней</h3><div class="price" id="pQuarter"></div><p class="muted">Сезонный доступ</p><button onclick="buy('infinity','90')">Купить в Telegram</button></article><article class="card"><h3>Навсегда</h3><div class="price" id="pForever"></div><p class="muted">Пожизненный доступ</p><button onclick="buy('infinity','forever')">Купить в Telegram</button></article></div>
 <h3 class="eyebrow" style="margin-top:28px">Lobok Client 1.16.5</h3>
-<div class="grid"><article class="card"><h3>Навсегда</h3><div class="price" id="pLobok"></div><p class="muted">Только пожизненный доступ для версии 1.16.5</p><button onclick="buy('lobok')">Купить в Telegram</button></article></div>
+<div class="grid"><article class="card"><h3>Навсегда</h3><div class="price" id="pLobok"></div><p class="muted">Только пожизненный доступ для версии 1.16.5</p><button onclick="buy('lobok','forever')">Купить в Telegram</button></article></div>
 <section class="card" style="margin-top:24px"><h3>Бесплатно (только Infinity)</h3><p class="muted">Каждый день 3 фри-ключа Infinity на 24 часа. Получить можно на главной странице после входа.</p><a class="btn ghost" href="/">На главную за фри-ключом</a></section>
 </section></div>
 <div class="modal" id="modal"><form class="dialog" onsubmit="submitAuth(event)"><h2 id="authTitle">Вход</h2><label>Логин<input id="login" required></label><label>Пароль<input id="password" type="password" minlength="8" required></label><label id="nickLabel" style="display:none">Ник Minecraft<input id="nickname"></label><div class="status" id="status"></div><div class="row"><button type="button" class="ghost" onclick="closeAuth()">Закрыть</button><button type="submit">Продолжить</button></div></form></div>
@@ -17,7 +17,15 @@ let registering=false;const token=()=>localStorage.getItem('token')||'';
 function auth(r){registering=r;modal.classList.add('open');authTitle.textContent=r?'Регистрация':'Вход';nickLabel.style.display=r?'block':'none'}function closeAuth(){modal.classList.remove('open')}
 async function api(path,body,t=token()){const r=await fetch('/api/'+path,{method:'POST',headers:{'content-type':'application/json',...(t?{authorization:'Bearer '+t}:{})},body:JSON.stringify(body)}),j=await r.json();if(!r.ok)throw Error(j.message||'Ошибка');return j}
 async function submitAuth(e){e.preventDefault();try{const j=await api('auth',{action:registering?'register':'login',login:login.value,password:password.value,nickname:nickname.value},'');localStorage.setItem('token',j.token);location='/cabinet'}catch(e){status.textContent=e.message}}
-function buy(software){if(!token())return auth(false);window.open(TG[software]||TG.infinity,'_blank')}
-async function syncSession(){if(!token())return;try{const j=await api('auth',{action:'profile'});accountNav.innerHTML=`<a href="/">Главная</a><a href="/stats.html">Статистика</a><span class="muted">@${j.user.login}</span><a class="btn ghost" href="/cabinet">Кабинет</a><button onclick="logoutSession()">Выйти</button>`}catch{localStorage.removeItem('token')}}function logoutSession(){localStorage.removeItem('token');location.reload()}
+let myLogin='';
+function buy(software,planKey){
+  const product=software==='infinity'?'Infinity 1.21.4 (Fabric)':'Lobok Client 1.16.5';
+  const plan=planKey==='30'?'30 дней':planKey==='90'?'90 дней':'Навсегда';
+  let msg=`Здравствуйте! Хочу оформить заказ EXZODUS.\n🔹 Продукт: ${product}\n🔹 Тариф: ${plan}`;
+  if(myLogin)msg+=`\n🔹 Мой логин на сайте: ${myLogin}`;
+  msg+=`\nПожалуйста, напишите реквизиты для оплаты.`;
+  window.open((TG[software]||TG.infinity)+'?text='+encodeURIComponent(msg),'_blank');
+}
+async function syncSession(){if(!token())return;try{const j=await api('auth',{action:'profile'});myLogin=j.user.login;accountNav.innerHTML=`<a href="/">Главная</a><a href="/stats.html">Статистика</a><span class="muted">@${j.user.login}</span><a class="btn ghost" href="/cabinet">Кабинет</a><button onclick="logoutSession()">Выйти</button>`}catch{localStorage.removeItem('token')}}function logoutSession(){localStorage.removeItem('token');location.reload()}
 syncSession();
 </script></body></html>
