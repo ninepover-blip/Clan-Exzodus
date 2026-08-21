@@ -19,7 +19,7 @@ except Exception:
 
 # ---------------------------------------------------------------- constants
 APP_NAME = "EXZODUS"
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.1.1"
 API_BASE = "https://clan-exzodus.vercel.app/api"
 
 SOFTWARE = {
@@ -403,9 +403,9 @@ class Launcher(tk.Tk):
                 status.configure(text=j.get("message", "Ошибка входа"))
 
         ttk.Button(card, text="Войти", command=do_login).pack(fill="x", pady=(0, 8))
-        ttk.Button(card, text="Регистрация", style="Ghost.TButton", command=lambda: self._register(login.get(), pwd.get(), status)).pack(fill="x")
+        ttk.Button(card, text="Регистрация", style="Ghost.TButton", command=lambda: self._register_account(login.get(), pwd.get(), status)).pack(fill="x")
 
-    def _register(self, login, pwd, status):
+    def _register_account(self, login, pwd, status):
         status.configure(text="")
         if len(pwd) < 8:
             status.configure(text="Пароль минимум 8 символов")
