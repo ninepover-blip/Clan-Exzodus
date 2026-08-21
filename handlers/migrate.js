@@ -29,6 +29,8 @@ const STATEMENTS = [
      server_address text,
      created_at timestamptz not null default now()
    )` },
+  { label: 'backfill licenses', q: sql`update licenses set software='infinity' where software is null` },
+  { label: 'backfill orders', q: sql`update orders set software='infinity' where software is null` },
 ];
 
 export default async function handler(req, res) {
