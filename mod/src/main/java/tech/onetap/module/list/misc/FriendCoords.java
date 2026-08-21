@@ -23,6 +23,7 @@ import tech.onetap.util.render.providers.ColorProvider;
 import tech.onetap.util.render.renderers.DrawUtil;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -37,7 +38,35 @@ public class FriendCoords extends Module {
     private static final Pattern TEAM_PREFIX = Pattern.compile("(?i)^\\s*(?:\\[[^\\]]{1,32}\\]\\s*)*([A-Za-z0-9_]{1,16})\\s*(?::|»|>|\\|)\\s*(.+)$");
     private static final Pattern COORDS3 = Pattern.compile("(-?\\d{1,8})\\s+(-?\\d{1,8})\\s+(-?\\d{1,8})");
     private static final Pattern COORDS2 = Pattern.compile("(-?\\d{1,8})\\s+(-?\\d{1,8})");
-    private static final Pattern HELP = Pattern.compile("(?i)(хелп|хелпа|помог|помощь|спас|help)");
+    private static final Pattern COORDS_XYZ_LABELED = Pattern.compile("(?i)\\bx\\s*[=:]?\\s*(-?\\d{1,8})\\s*[,\\s;]+y\\s*[=:]?\\s*(-?\\d{1,8})\\s*[,\\s;]+z\\s*[=:]?\\s*(-?\\d{1,8})");
+    private static final Pattern COORDS_XZ_LABELED = Pattern.compile("(?i)\\bx\\s*[=:]?\\s*(-?\\d{1,8})\\s*[,\\s;]+z\\s*[=:]?\\s*(-?\\d{1,8})");
+
+    private static final List<String> HELP_KEYWORDS = List.of(
+            "help", "hepl", "helpa", "helpe", "helpi", "хелп", "хелпа", "хелпе", "хелпи", "хелпите",
+            "помоги", "помогите", "помож", "поможите", "поможете", "помощь", "помощ", "помогай", "помогайте", "помогте",
+            "спаси", "спасите", "спасение", "спасай", "спасайте", "спасайте меня", "спасе", "спс",
+            "выруч", "выручи", "выручайте", "выручайти", "выручайте пж",
+            "приди", "прийдите", "приходи", "приходите", "подойди", "подойдите", "подлетай", "подлетайте",
+            "отходку", "отход", "отходите", "отхильте", "отхил", "отхилить", "отхили",
+            "тону", "тонем", "умираю", "умираем", "умирает", "мру", "мрем", "сдохну", "сдохнем",
+            "атакуют", "атака", "атакуй", "кил", "килы", "фраг", "фраги", "штурм", "штурмуют",
+            "рейд", "рейды", "босс", "боссы", "крест", "кресты", "инвент", "инвенты", "война", "войну",
+            "база", "базу", "на базе", "база под атакой", "в логово", "на базу", "логово",
+            "нужна помощь", "нужна пом", "на помощь", "кто может", "кто нибудь", "кто-нибудь", "кто нибуть", "кто рядом",
+            "кто тут", "кто здесь", "кто на", "кто онлайн", "кто в",
+            "пж", "пз", "пжалста", "пжлст", "пожалуйста", "плиз", "плизз", "плиззз",
+            "караул", "беда", "помогите пж", "ппц", "капец", "капут", "атас",
+            "ау", "ауу", "ааа", "эй", "алло",
+            "сложно", "сложна", "тяжело", "страшно", "опасно", "не могу", "не могу сам",
+            "застрял", "застряла", "заблудился", "заблудилась", "потерялся", "потерялась",
+            "мало хп", "хп мало", "мало здоровья", "низкий хп", "умираю от", "тону в",
+            "спасите пж", "хелп пж", "помогите пожалуйста", "прошу помощи", "прошу о помощи",
+            "срочно", "срочно нужна", "срочная", "помощь нужна", "надо помощи", "нужна подмога",
+            "подмога", "поддержка", "группировка", "нужна группа", "дай отходку", "дайте отходку",
+            "отходную", "дали отходку", "sos", "911", "come", "come here", "need help", "i need help", "please help",
+            "слабо", "загнали", "окружили", "окружили меня", "обложили", "попал", "попала",
+            "под атакой", "атакован", "атакована", "убьют", "убьют меня", "помру", "помрем", "пропадаю", "пропадаем"
+    );
 
     private static final long MARKER_TTL_MS = 300_000L;
     private static final long NOTIFY_COOLDOWN_MS = 30_000L;
@@ -105,11 +134,22 @@ public class FriendCoords extends Module {
                 lastNotify.put(senderName, now);
                 spamHelp(senderName, formatCoords(x, y, z, hasY));
             }
-        } else if (HELP.matcher(clean).find()) {
-            mc.getNetworkHandler().sendChatMessage("Напиши свои координаты (x y z), я приду!");
-            ChatUtil.send(Formatting.RED + "Друг " + Formatting.WHITE + senderName + Formatting.RED
-                    + " просит помощи, но не указал координаты — запросили координаты");
+        } else if (containsHelpKeyword(clean)) {
+            Long prev = lastNotify.get(senderName);
+            long now = System.currentTimeMillis();
+            if (prev == null || now - prev >= NOTIFY_COOLDOWN_MS) {
+                lastNotify.put(senderName, now);
+                spamAskCoords(senderName);
+            }
         }
+    }
+
+    private boolean containsHelpKeyword(String text) {
+        String t = text.toLowerCase(Locale.ROOT);
+        for (String kw : HELP_KEYWORDS) {
+            if (t.contains(kw)) return true;
+        }
+        return false;
     }
 
     private String[] extractSenderAndMessage(String full) {
@@ -148,6 +188,16 @@ public class FriendCoords extends Module {
         }
     }
 
+    private void spamAskCoords(String name) {
+        for (int i = 0; i < 6; i++) {
+            ChatUtil.send(Formatting.GOLD + "Друг " + Formatting.WHITE + name
+                    + Formatting.GOLD + " ПРОСИТ ПОМОЩИ! Координаты не указаны — запрашиваем координаты");
+        }
+        for (int i = 0; i < 3; i++) {
+            mc.getNetworkHandler().sendChatMessage(name + ", напиши свои координаты (x y z), я приду!");
+        }
+    }
+
     private String formatCoords(double x, double y, double z, boolean hasY) {
         if (hasY) {
             return String.format(Locale.US, "%.0f %.0f %.0f", x, y, z);
@@ -165,11 +215,26 @@ public class FriendCoords extends Module {
                     Integer.parseInt(m3.group(3))
             };
         }
+        Matcher ml3 = COORDS_XYZ_LABELED.matcher(text);
+        if (ml3.find()) {
+            return new double[]{
+                    Integer.parseInt(ml3.group(1)),
+                    Integer.parseInt(ml3.group(2)),
+                    Integer.parseInt(ml3.group(3))
+            };
+        }
         Matcher m2 = COORDS2.matcher(text);
         if (m2.find()) {
             return new double[]{
                     Integer.parseInt(m2.group(1)),
                     Integer.parseInt(m2.group(2))
+            };
+        }
+        Matcher ml2 = COORDS_XZ_LABELED.matcher(text);
+        if (ml2.find()) {
+            return new double[]{
+                    Integer.parseInt(ml2.group(1)),
+                    Integer.parseInt(ml2.group(2))
             };
         }
         return null;
